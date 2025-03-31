@@ -530,6 +530,39 @@ function processData(purchaseOrderData, salesTaxData) {
   // Group purchase orders by invoice number for summary
   const invoiceGroupedData = groupPurchaseOrdersByInvoice(purchaseOrderData);
   
+  // Calculate garment-specific quantities
+  let garmentPurchaseQuantity = 0;
+  let garmentSaleQuantity = 0;
+  
+  // Track items from garment suppliers
+  const garmentSupplierItems = new Set();
+  
+  // Check purchase order data for garment suppliers
+  purchaseOrderData.forEach(item => {
+    const supplierName = (item['Suppiler Name'] || '').toLowerCase();
+    const itemId = item['Item Id']?.toString();
+    
+    if (supplierName.includes('garment') && itemId) {
+      // Add to garment purchase quantity
+      const quantity = parseNumberValue(item['Received Qty']);
+      garmentPurchaseQuantity += quantity;
+      
+      // Track this item as coming from a garment supplier
+      garmentSupplierItems.add(itemId);
+    }
+  });
+  
+  // Check sales data for items from garment suppliers
+  salesTaxData.forEach(item => {
+    const itemId = item['Item Id']?.toString();
+    
+    if (itemId && garmentSupplierItems.has(itemId)) {
+      // Add to garment sale quantity
+      const quantity = parseNumberValue(item['Qty']);
+      garmentSaleQuantity += quantity;
+    }
+  });
+  
   // Generate summary with focus on totals
   const summary = {
     // Data counts
@@ -543,6 +576,10 @@ function processData(purchaseOrderData, salesTaxData) {
     totalPurchaseAmount,
     totalSaleAmount,
     difference: totalSaleAmount - totalPurchaseAmount,
+    
+    // Garment quantities
+    garmentPurchaseQuantity,
+    garmentSaleQuantity,
     
     // Profit Percentage
     profitPercentage: totalPurchaseAmount > 0 
@@ -567,6 +604,11 @@ Total Sale Amount: ${totalSaleAmount.toFixed(2)}
 Profit (Sale - Purchase): ${(totalSaleAmount - totalPurchaseAmount).toFixed(2)}
 Profit Percentage: ${summary.profitPercentage}
 Commission Percentage: ${summary.commissionPercentage}
+
+Garment Supplier Summary:
+-----------------------------------------
+Garment Purchase Quantity: ${garmentPurchaseQuantity.toFixed(2)}
+Garment Sale Quantity: ${garmentSaleQuantity.toFixed(2)}
 
 Data Statistics:
 -----------------------------------------
