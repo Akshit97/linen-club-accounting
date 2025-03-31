@@ -223,6 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   <th>Supplier Name</th>
                   <th>Invoice Date</th>
                   <th class="text-end" style="white-space: nowrap;">Gross Value</th>
+                  <th class="text-end" style="white-space: nowrap;">Total Quantity</th>
                   <th class="text-end" style="white-space: nowrap;">Items</th>
                 </tr>
               </thead>
@@ -245,6 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
                       <td>${invoice.supplierName}</td>
                       <td>${invoice.invoiceDate}</td>
                       <td class="text-end" style="white-space: nowrap;">₹${formatNumber(invoice.grossValue)}</td>
+                      <td class="text-end" style="white-space: nowrap;">${formatNumber(invoice.totalQuantity)}</td>
                       <td class="text-end" style="white-space: nowrap;">${invoice.itemCount}</td>
                     </tr>
                   `;

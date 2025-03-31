@@ -603,12 +603,14 @@ function groupPurchaseOrdersByInvoice(purchaseOrderData) {
   purchaseOrderData.forEach(item => {
     const invoiceNumber = item['Invoice Number'] || 'Unknown Invoice';
     const grossValue = parseNumberValue(item['Gross Value']) || 0;
+    const receivedQty = parseNumberValue(item['Received Qty']) || 0;
     
     // Get or create invoice entry
     if (!invoiceMap.has(invoiceNumber)) {
       invoiceMap.set(invoiceNumber, {
         invoiceNumber,
         grossValue: 0,
+        totalQuantity: 0,
         itemCount: 0,
         supplierName: item['Suppiler Name'] || 'Unknown Supplier',
         invoiceDate: item['Invoice Date'] || ''
@@ -618,6 +620,7 @@ function groupPurchaseOrdersByInvoice(purchaseOrderData) {
     // Update invoice totals
     const invoiceData = invoiceMap.get(invoiceNumber);
     invoiceData.grossValue += grossValue;
+    invoiceData.totalQuantity += receivedQty;
     invoiceData.itemCount++;
   });
   
@@ -631,6 +634,7 @@ function groupPurchaseOrdersByInvoice(purchaseOrderData) {
   const totalRow = {
     invoiceNumber: 'Total',
     grossValue: result.reduce((sum, invoice) => sum + invoice.grossValue, 0),
+    totalQuantity: result.reduce((sum, invoice) => sum + invoice.totalQuantity, 0),
     itemCount: result.reduce((sum, invoice) => sum + invoice.itemCount, 0),
     supplierName: '',
     invoiceDate: ''
