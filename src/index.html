@@ -16,20 +16,29 @@
         padding: 30px 15px;
       }
       .header {
-        text-align: center;
         margin-bottom: 30px;
         padding: 20px;
         background: #fff;
         border-radius: 8px;
         box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        display: flex;
+        align-items: center;
+      }
+      .header-content {
+        flex: 1;
       }
       .header h1 {
         margin-bottom: 5px;
+        margin-top: 0;
         color: #333;
       }
       .header p {
         color: #666;
         margin-bottom: 0;
+      }
+      .logo-img {
+        max-width: 120px;
+        margin-right: 20px;
       }
       .card {
         border: none;
@@ -125,8 +134,11 @@
     <div class="main-container">
       <!-- Header -->
       <div class="header">
-        <h1>Linen Club Accounting</h1>
-        <p class="lead">Purchase Order and Sales Tax Report Analysis Tool</p>
+        <img src="Linen_Club_Logo.jpg" alt="Linen Club Logo" class="logo-img">
+        <div class="header-content">
+          <h1>Linen Club Accounting</h1>
+          <p class="lead">Purchase Order and Sales Tax Report Analysis Tool</p>
+        </div>
       </div>
       
       <div class="row">
