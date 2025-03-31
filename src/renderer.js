@@ -12,42 +12,41 @@ document.addEventListener('DOMContentLoaded', () => {
   let salesTaxPath = null;
 
   // Purchase order file selection
-  purchaseOrderInput.addEventListener('click', async (event) => {
-    event.preventDefault();
+  purchaseOrderInput.addEventListener('click', async () => {
     const filePath = await window.electronAPI.openFile('Select Purchase Order Report');
     if (filePath) {
       purchaseOrderPath = filePath;
       const fileNameOnly = filePath.split('/').pop();
-      purchaseOrderInput.setAttribute('data-file-selected', fileNameOnly);
       updateFileSelectionUI(purchaseOrderInput, fileNameOnly);
     }
   });
 
   // Sales tax file selection
-  salesTaxInput.addEventListener('click', async (event) => {
-    event.preventDefault();
+  salesTaxInput.addEventListener('click', async () => {
     const filePath = await window.electronAPI.openFile('Select Sales Tax Report');
     if (filePath) {
       salesTaxPath = filePath;
       const fileNameOnly = filePath.split('/').pop();
-      salesTaxInput.setAttribute('data-file-selected', fileNameOnly);
       updateFileSelectionUI(salesTaxInput, fileNameOnly);
     }
   });
 
   // Helper function to update UI after file selection
-  function updateFileSelectionUI(inputElement, fileName) {
-    // Create or update the file name display
-    let fileNameDisplay = inputElement.nextElementSibling;
-    if (!fileNameDisplay || !fileNameDisplay.classList.contains('selected-file-name')) {
-      fileNameDisplay = document.createElement('div');
-      fileNameDisplay.classList.add('selected-file-name', 'mt-2', 'text-info');
-      inputElement.parentNode.insertBefore(fileNameDisplay, inputElement.nextSibling);
-    }
-    fileNameDisplay.textContent = `Selected: ${fileName}`;
+  function updateFileSelectionUI(element, fileName) {
+    // Add selected class to the upload box
+    element.classList.add('file-selected');
     
-    // Update input appearance
-    inputElement.classList.add('file-selected');
+    // Update text content
+    const textSpan = element.querySelector('span');
+    if (textSpan) {
+      textSpan.textContent = `Selected: ${fileName}`;
+    }
+    
+    // Add a file icon if not already present
+    const icon = element.querySelector('i');
+    if (icon) {
+      icon.className = 'bi bi-file-earmark-check d-block';
+    }
   }
 
   // Process button click handler
@@ -88,108 +87,157 @@ document.addEventListener('DOMContentLoaded', () => {
     // Clear previous results
     resultsDiv.innerHTML = '';
 
-    // Create container for summary
-    const summaryContainer = document.createElement('div');
-    summaryContainer.className = 'mb-4';
+    // Create container for all results
+    const container = document.createElement('div');
     
     // Add success message
-    const successMessage = document.createElement('div');
-    successMessage.className = 'alert alert-success mb-3';
-    successMessage.textContent = 'Reports processed successfully!';
-    summaryContainer.appendChild(successMessage);
+    const successAlert = document.createElement('div');
+    successAlert.className = 'alert alert-success mb-4';
+    successAlert.innerHTML = `
+      <div class="d-flex align-items-center">
+        <i class="bi bi-check-circle-fill me-3" style="font-size: 1.5rem;"></i>
+        <div>
+          <strong>Analysis Complete!</strong> Reports processed successfully.
+          <div class="small text-muted">Files saved to your computer.</div>
+        </div>
+      </div>
+    `;
+    container.appendChild(successAlert);
 
-    // Add output file locations
-    if (result.outputFiles) {
-      const outputFilesDiv = document.createElement('div');
-      outputFilesDiv.className = 'alert alert-info mb-3';
-      outputFilesDiv.innerHTML = `
-        <strong>Output files created:</strong>
-        <ul class="mt-2 mb-0">
-          <li>Purchase Order Data: ${result.outputFiles.purchaseOrderOutputPath}</li>
-          <li>Sales Tax Data: ${result.outputFiles.salesTaxOutputPath}</li>
-          <li>Matched Data: ${result.outputFiles.matchedDataOutputPath}</li>
-          <li>Summary: ${result.outputFiles.summaryOutputPath}</li>
-        </ul>
-      `;
-      summaryContainer.appendChild(outputFilesDiv);
-    }
-
-    // Display the detailed summary information
-    if (result.summaryText) {
-      const summaryTextDiv = document.createElement('div');
-      summaryTextDiv.className = 'card mb-3';
-      summaryTextDiv.innerHTML = `
-        <div class="card-header bg-primary text-white">Financial Summary</div>
-        <div class="card-body">
-          <pre class="mb-0">${result.summaryText}</pre>
+    // Financial summary section
+    const summarySection = document.createElement('div');
+    summarySection.className = 'mb-4';
+    
+    // Create a row for financial highlights
+    const highlightsRow = document.createElement('div');
+    highlightsRow.className = 'row g-3 mb-4';
+    
+    // Helper to create financial highlight cards
+    function createHighlightCard(label, value, colorClass) {
+      const col = document.createElement('div');
+      col.className = 'col-md-6 col-lg-3';
+      
+      col.innerHTML = `
+        <div class="card h-100">
+          <div class="card-body p-3">
+            <div class="financial-highlight">
+              <div class="highlight-label">${label}</div>
+              <div class="highlight-value ${colorClass}">${value}</div>
+            </div>
+          </div>
         </div>
       `;
-      summaryContainer.appendChild(summaryTextDiv);
+      return col;
     }
-    // Otherwise fall back to the basic summary
-    else {
-      // Add basic summary information
-      const summaryInfo = document.createElement('div');
-      summaryInfo.className = 'card mb-3';
-      summaryInfo.innerHTML = `
-        <div class="card-header bg-primary text-white">Summary</div>
-        <div class="card-body">
-          <ul class="list-group">
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-              <strong>Total Purchase Amount:</strong>
-              <span class="badge bg-primary rounded-pill">${result.summary.totalPurchaseAmount?.toFixed(2) || 0}</span>
+    
+    // Format currency values
+    const formatCurrency = (value) => {
+      return parseFloat(value).toLocaleString('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        maximumFractionDigits: 2
+      });
+    };
+    
+    // Add financial cards
+    const totalPurchase = formatCurrency(result.summary.totalPurchaseAmount || 0);
+    const totalSale = formatCurrency(result.summary.totalSaleAmount || 0);
+    const difference = formatCurrency(result.summary.difference || 0);
+    const isDifferencePositive = (result.summary.difference || 0) >= 0;
+    
+    highlightsRow.appendChild(createHighlightCard('Total Purchase', totalPurchase, 'neutral'));
+    highlightsRow.appendChild(createHighlightCard('Total Sale', totalSale, 'neutral'));
+    highlightsRow.appendChild(createHighlightCard('Profit', difference, isDifferencePositive ? 'positive' : 'negative'));
+    highlightsRow.appendChild(createHighlightCard('Profit %', result.summary.profitPercentage || 'N/A', isDifferencePositive ? 'positive' : 'negative'));
+    
+    summarySection.appendChild(highlightsRow);
+    
+    // Add record count statistics
+    const statsCard = document.createElement('div');
+    statsCard.className = 'card mb-4';
+    statsCard.innerHTML = `
+      <div class="card-header">
+        <i class="bi bi-clipboard-data me-2"></i>Data Statistics
+      </div>
+      <div class="card-body p-3">
+        <div class="row g-2">
+          <div class="col-md-4">
+            <div class="border rounded p-3 text-center">
+              <div style="font-size: 24px; font-weight: 700;">${result.summary.purchaseOrderCount || 0}</div>
+              <div class="text-muted">Purchase Orders</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="border rounded p-3 text-center">
+              <div style="font-size: 24px; font-weight: 700;">${result.summary.salesTaxCount || 0}</div>
+              <div class="text-muted">Sales Records</div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="border rounded p-3 text-center">
+              <div style="font-size: 24px; font-weight: 700;">${result.summary.matchedCount || 0}</div>
+              <div class="text-muted">Matched Records</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    summarySection.appendChild(statsCard);
+    
+    container.appendChild(summarySection);
+    
+    // Add file output locations if available
+    if (result.outputFiles) {
+      const filesCard = document.createElement('div');
+      filesCard.className = 'card';
+      filesCard.innerHTML = `
+        <div class="card-header">
+          <i class="bi bi-folder me-2"></i>Output Files
+        </div>
+        <div class="card-body p-3">
+          <ul class="list-group list-group-flush">
+            <li class="list-group-item d-flex align-items-center">
+              <i class="bi bi-file-earmark-spreadsheet me-3 text-primary"></i>
+              <div>
+                <div><strong>Purchase Order Data</strong></div>
+                <div class="text-muted small text-break">${result.outputFiles.purchaseOrderOutputPath}</div>
+              </div>
             </li>
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-              <strong>Total Sale Amount:</strong>
-              <span class="badge bg-success rounded-pill">${result.summary.totalSaleAmount?.toFixed(2) || 0}</span>
+            <li class="list-group-item d-flex align-items-center">
+              <i class="bi bi-file-earmark-spreadsheet me-3 text-success"></i>
+              <div>
+                <div><strong>Sales Tax Data</strong></div>
+                <div class="text-muted small text-break">${result.outputFiles.salesTaxOutputPath}</div>
+              </div>
             </li>
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-              <strong>Difference (Sale - Purchase):</strong>
-              <span class="badge ${result.summary.difference >= 0 ? 'bg-success' : 'bg-danger'} rounded-pill">${result.summary.difference?.toFixed(2) || 0}</span>
+            <li class="list-group-item d-flex align-items-center">
+              <i class="bi bi-file-earmark-spreadsheet me-3 text-info"></i>
+              <div>
+                <div><strong>Matched Data</strong></div>
+                <div class="text-muted small text-break">${result.outputFiles.matchedDataOutputPath}</div>
+              </div>
             </li>
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-              <strong>Profit Percentage:</strong>
-              <span class="badge bg-info rounded-pill">${result.summary.profitPercentage || 'N/A'}</span>
-            </li>
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-              <strong>Purchase Order Items:</strong>
-              <span class="badge bg-secondary rounded-pill">${result.summary.purchaseOrderCount || 0}</span>
-            </li>
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-              <strong>Sales Tax Items:</strong>
-              <span class="badge bg-secondary rounded-pill">${result.summary.salesTaxCount || 0}</span>
-            </li>
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-              <strong>Matched Items:</strong>
-              <span class="badge bg-secondary rounded-pill">${result.summary.matchedCount || 0}</span>
-            </li>
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-              <strong>Sales Without Purchase:</strong>
-              <span class="badge bg-warning rounded-pill">${result.summary.salesWithoutPurchaseCount || 0}</span>
-            </li>
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-              <strong>Unused Purchases:</strong>
-              <span class="badge bg-warning rounded-pill">${result.summary.unusedPurchasesCount || 0}</span>
+            <li class="list-group-item d-flex align-items-center">
+              <i class="bi bi-file-earmark-text me-3 text-warning"></i>
+              <div>
+                <div><strong>Summary</strong></div>
+                <div class="text-muted small text-break">${result.outputFiles.summaryOutputPath}</div>
+              </div>
             </li>
           </ul>
         </div>
       `;
-      summaryContainer.appendChild(summaryInfo);
+      container.appendChild(filesCard);
     }
-
-    resultsDiv.appendChild(summaryContainer);
-
-    // Add note about CSV files
-    const csvNote = document.createElement('div');
-    csvNote.className = 'alert alert-secondary';
-    csvNote.innerHTML = `<strong>Note:</strong> All data has been saved as CSV files to your computer. Check the locations listed above.`;
-    resultsDiv.appendChild(csvNote);
+    
+    resultsDiv.appendChild(container);
   }
 
   // Helper function to display error messages
   function showError(message) {
     resultsDiv.innerHTML = `
-      <div class="error-message">
+      <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
         <strong>Error:</strong> ${message}
       </div>
     `;

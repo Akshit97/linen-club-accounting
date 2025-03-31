@@ -11,17 +11,26 @@ if (require('electron-squirrel-startup')) {
 const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 1600,
+    height: 1000,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
     },
+    show: false // Don't show until ready
   });
 
   // and load the index.html of the app.
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
+
+  // Maximize window on creation
+  mainWindow.maximize();
+  
+  // Show window when ready to avoid visual flickering
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
 
   // Open the DevTools.
   // mainWindow.webContents.openDevTools();

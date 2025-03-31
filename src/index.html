@@ -4,62 +4,189 @@
     <meta charset="UTF-8" />
     <title>Linen Club Accounting</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="index.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+      body {
+        background-color: #f8f9fa;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      }
+      .main-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 30px 15px;
+      }
+      .header {
+        text-align: center;
+        margin-bottom: 30px;
+        padding: 20px;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      }
+      .header h1 {
+        margin-bottom: 5px;
+        color: #333;
+      }
+      .header p {
+        color: #666;
+        margin-bottom: 0;
+      }
+      .card {
+        border: none;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        margin-bottom: 20px;
+        overflow: hidden;
+      }
+      .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #eee;
+        font-weight: 600;
+        padding: 15px 20px;
+      }
+      .card-body {
+        padding: 20px;
+      }
+      .upload-box {
+        border: 2px dashed #ddd;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        margin-bottom: 15px;
+        transition: all 0.3s;
+      }
+      .upload-box:hover {
+        border-color: #6c757d;
+        background-color: #f8f9fa;
+      }
+      .upload-box i {
+        font-size: 24px;
+        color: #6c757d;
+        margin-bottom: 10px;
+      }
+      .upload-label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 10px;
+        color: #495057;
+      }
+      .btn-primary {
+        background-color: #0d6efd;
+        border: none;
+        font-weight: 500;
+        padding: 10px 20px;
+      }
+      .file-selected {
+        background-color: #e8f4ff;
+        border-color: #0d6efd;
+      }
+      .selected-file-name {
+        font-size: 12px;
+        color: #0d6efd;
+        margin-top: 5px;
+      }
+      .results-placeholder {
+        text-align: center;
+        padding: 50px 20px;
+        color: #6c757d;
+      }
+      .results-placeholder i {
+        font-size: 48px;
+        margin-bottom: 20px;
+        opacity: 0.5;
+      }
+      .loadingSpinner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 30px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      }
+      .financial-highlight {
+        text-align: center;
+        padding: 15px;
+      }
+      .highlight-value {
+        font-size: 24px;
+        font-weight: 700;
+      }
+      .highlight-label {
+        font-size: 14px;
+        color: #6c757d;
+      }
+      .positive { color: #198754; }
+      .negative { color: #dc3545; }
+      .neutral { color: #0d6efd; }
+    </style>
   </head>
   <body>
-    <div class="container mt-5">
-      <div class="row">
-        <div class="col-12 text-center mb-4">
-          <h1>Linen Club Accounting</h1>
-          <p class="lead">Upload purchase order and sales tax reports for processing</p>
-        </div>
+    <div class="main-container">
+      <!-- Header -->
+      <div class="header">
+        <h1>Linen Club Accounting</h1>
+        <p class="lead">Purchase Order and Sales Tax Report Analysis Tool</p>
       </div>
       
-      <div class="row justify-content-center">
-        <div class="col-md-6">
-          <div class="card mb-4">
-            <div class="card-header bg-primary text-white">
-              <h5 class="mb-0">Upload Reports</h5>
-            </div>
-            <div class="card-body">
-              <form id="uploadForm">
-                <div class="mb-3">
-                  <label for="purchaseOrderFile" class="form-label">Purchase Order Report (XLSX)</label>
-                  <button type="button" id="purchaseOrderFile" class="form-control file-button">Select Purchase Order File</button>
-                </div>
-                <div class="mb-3">
-                  <label for="salesTaxFile" class="form-label">Sales Tax Report (XLSX)</label>
-                  <button type="button" id="salesTaxFile" class="form-control file-button">Select Sales Tax File</button>
-                </div>
-                <button type="button" id="processBtn" class="btn btn-primary w-100">Process Reports</button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div class="row">
-        <div class="col-12">
+        <!-- Left Column: Upload Controls -->
+        <div class="col-md-4">
           <div class="card">
-            <div class="card-header bg-success text-white">
-              <h5 class="mb-0">Results</h5>
+            <div class="card-header">
+              <i class="bi bi-upload me-2"></i>Upload Reports
             </div>
             <div class="card-body">
-              <div id="results" class="results-container">
-                <p class="text-center text-muted">Results will appear here after processing</p>
+              <!-- Purchase Order File Selection -->
+              <div class="mb-4">
+                <label class="upload-label">Purchase Order Report (XLSX)</label>
+                <div id="purchaseOrderFile" class="upload-box">
+                  <i class="bi bi-file-earmark-spreadsheet d-block"></i>
+                  <span>Select Purchase Order File</span>
+                </div>
               </div>
+              
+              <!-- Sales Tax File Selection -->
+              <div class="mb-4">
+                <label class="upload-label">Sales Tax Report (XLSX)</label>
+                <div id="salesTaxFile" class="upload-box">
+                  <i class="bi bi-file-earmark-spreadsheet d-block"></i>
+                  <span>Select Sales Tax File</span>
+                </div>
+              </div>
+              
+              <!-- Process Button -->
+              <button type="button" id="processBtn" class="btn btn-primary w-100">
+                <i class="bi bi-gear-fill me-2"></i>Process Reports
+              </button>
             </div>
           </div>
-        </div>
-      </div>
-
-      <div class="row mt-3">
-        <div class="col-12">
-          <div id="loadingSpinner" class="d-none text-center">
-            <div class="spinner-border text-primary" role="status">
+          
+          <!-- Loading Spinner (Hidden by default) -->
+          <div id="loadingSpinner" class="d-none loadingSpinner">
+            <div class="spinner-border text-primary mb-3" role="status">
               <span class="visually-hidden">Loading...</span>
             </div>
-            <p>Processing files, please wait...</p>
+            <div>Processing files...</div>
+            <small class="text-muted">Please wait</small>
+          </div>
+        </div>
+        
+        <!-- Right Column: Results -->
+        <div class="col-md-8">
+          <div class="card">
+            <div class="card-header">
+              <i class="bi bi-bar-chart-fill me-2"></i>Analysis Results
+            </div>
+            <div class="card-body p-0">
+              <div id="results" class="p-3">
+                <div class="results-placeholder">
+                  <i class="bi bi-file-earmark-text d-block"></i>
+                  <h5>No Results Yet</h5>
+                  <p class="text-muted">Upload and process your reports to see analysis results</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
