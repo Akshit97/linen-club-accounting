@@ -152,67 +152,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     summarySection.appendChild(highlightsRow);
     
-    // Add Garment Supplier Summary
-    const garmentRow = document.createElement('div');
-    garmentRow.className = 'row g-3 mb-4';
-    
-    // Helper to create a single info card
-    function createInfoCard(title, content) {
-      const card = document.createElement('div');
-      card.className = 'col-md-6';
-      card.innerHTML = `
-        <div class="card h-100">
-          <div class="card-header bg-light">
-            <strong>${title}</strong>
-          </div>
-          <div class="card-body">
-            <div class="d-flex align-items-center">
-              <i class="bi bi-box-seam me-3 text-primary" style="font-size: 2rem;"></i>
-              <div>
-                <h3 class="mb-0">${content}</h3>
-                <div class="text-muted small">Units</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-      return card;
-    }
-    
-    // Format quantity values
-    const formatQuantity = (value) => parseFloat(value || 0).toLocaleString('en-IN', {
-      maximumFractionDigits: 2
-    });
-    
-    // Add garment quantity cards
-    garmentRow.appendChild(createInfoCard(
-      'Garment Purchase Quantity', 
-      formatQuantity(result.summary.garmentPurchaseQuantity)
-    ));
-    
-    garmentRow.appendChild(createInfoCard(
-      'Garment Sale Quantity', 
-      formatQuantity(result.summary.garmentSaleQuantity)
-    ));
-    
-    // Create container for garment summary
-    const garmentSummaryCard = document.createElement('div');
-    garmentSummaryCard.className = 'card mb-4';
-    garmentSummaryCard.innerHTML = `
-      <div class="card-header bg-primary text-white">
-        <i class="bi bi-layers me-2"></i>Garment Summary
-      </div>
-      <div class="card-body">
-        <p class="text-muted mb-3">Summary of purchases and sales for products from suppliers with "garment" in their name</p>
-        <div id="garment-quantity-cards"></div>
-      </div>
-    `;
-    
-    const garmentCardsContainer = garmentSummaryCard.querySelector('#garment-quantity-cards');
-    garmentCardsContainer.appendChild(garmentRow);
-    
-    summarySection.appendChild(garmentSummaryCard);
-    
     // Add Supplier Profit Report
     if (result.supplierGroupedData && result.supplierGroupedData.length > 0) {
       const supplierReportCard = document.createElement('div');
@@ -266,6 +205,158 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
       summarySection.appendChild(supplierReportCard);
     }
+    
+    // Add Garment Supplier Summary
+    const garmentRow = document.createElement('div');
+    garmentRow.className = 'row g-3 mb-4';
+    
+    // Helper to create a single info card
+    function createInfoCard(title, content) {
+      const card = document.createElement('div');
+      card.className = 'col-md-6';
+      card.innerHTML = `
+        <div class="card h-100">
+          <div class="card-header bg-light">
+            <strong>${title}</strong>
+          </div>
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              <i class="bi bi-box-seam me-3 text-primary" style="font-size: 2rem;"></i>
+              <div>
+                <h3 class="mb-0">${content}</h3>
+                <div class="text-muted small">Units</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      return card;
+    }
+    
+    // Format quantity values
+    const formatQuantity = (value) => parseFloat(value || 0).toLocaleString('en-IN', {
+      maximumFractionDigits: 2
+    });
+    
+    // Add garment quantity cards
+    garmentRow.appendChild(createInfoCard(
+      'Garment Purchase Quantity', 
+      formatQuantity(result.summary.garmentPurchaseQuantity)
+    ));
+    
+    garmentRow.appendChild(createInfoCard(
+      'Garment Sale Quantity', 
+      formatQuantity(result.summary.garmentSaleQuantity)
+    ));
+    
+    // Create container for garment summary
+    const garmentSummaryCard = document.createElement('div');
+    garmentSummaryCard.className = 'card mb-4';
+    garmentSummaryCard.innerHTML = `
+      <div class="card-header bg-primary text-white">
+        <i class="bi bi-layers me-2"></i>Garment Summary
+      </div>
+      <div class="card-body">
+        <p class="text-muted mb-3">Summary of purchases and sales for products from suppliers with "garment" in their name</p>
+        <div id="garment-quantity-cards"></div>
+        
+        ${result.garmentSalesDateArray && result.garmentSalesDateArray.length > 0 ? `
+          <h5 class="mt-4 mb-3">Garment Sales by Date</h5>
+          <div class="table-responsive">
+            <table class="table table-hover table-striped">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th class="text-end">Quantity</th>
+                  <th class="text-end">Amount (₹)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${result.garmentSalesDateArray.map(entry => `
+                  <tr>
+                    <td>${entry.date}</td>
+                    <td class="text-end">${formatQuantity(entry.quantity)}</td>
+                    <td class="text-end">₹${formatQuantity(entry.amount)}</td>
+                  </tr>
+                `).join('')}
+                <tr class="table-primary fw-bold">
+                  <td>Total</td>
+                  <td class="text-end">${formatQuantity(result.summary.garmentSaleQuantity)}</td>
+                  <td class="text-end">₹${formatQuantity(result.garmentSalesDateArray.reduce((sum, entry) => sum + entry.amount, 0))}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
+      </div>
+    `;
+    
+    const garmentCardsContainer = garmentSummaryCard.querySelector('#garment-quantity-cards');
+    garmentCardsContainer.appendChild(garmentRow);
+    
+    summarySection.appendChild(garmentSummaryCard);
+    
+    // Add Fabric Supplier Summary
+    const fabricRow = document.createElement('div');
+    fabricRow.className = 'row g-3 mb-4';
+    
+    // Add fabric quantity cards
+    fabricRow.appendChild(createInfoCard(
+      'Fabric Purchase Quantity', 
+      formatQuantity(result.summary.fabricPurchaseQuantity)
+    ));
+    
+    fabricRow.appendChild(createInfoCard(
+      'Fabric Sale Quantity', 
+      formatQuantity(result.summary.fabricSaleQuantity)
+    ));
+    
+    // Create container for fabric summary
+    const fabricSummaryCard = document.createElement('div');
+    fabricSummaryCard.className = 'card mb-4';
+    fabricSummaryCard.innerHTML = `
+      <div class="card-header bg-primary text-white">
+        <i class="bi bi-grid-3x3 me-2"></i>Fabric Summary
+      </div>
+      <div class="card-body">
+        <p class="text-muted mb-3">Summary of purchases and sales for products from suppliers with "fabric" in their name</p>
+        <div id="fabric-quantity-cards"></div>
+        
+        ${result.fabricSalesDateArray && result.fabricSalesDateArray.length > 0 ? `
+          <h5 class="mt-4 mb-3">Fabric Sales by Date</h5>
+          <div class="table-responsive">
+            <table class="table table-hover table-striped">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th class="text-end">Quantity</th>
+                  <th class="text-end">Amount (₹)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${result.fabricSalesDateArray.map(entry => `
+                  <tr>
+                    <td>${entry.date}</td>
+                    <td class="text-end">${formatQuantity(entry.quantity)}</td>
+                    <td class="text-end">₹${formatQuantity(entry.amount)}</td>
+                  </tr>
+                `).join('')}
+                <tr class="table-primary fw-bold">
+                  <td>Total</td>
+                  <td class="text-end">${formatQuantity(result.summary.fabricSaleQuantity)}</td>
+                  <td class="text-end">₹${formatQuantity(result.fabricSalesDateArray.reduce((sum, entry) => sum + entry.amount, 0))}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
+      </div>
+    `;
+    
+    const fabricCardsContainer = fabricSummaryCard.querySelector('#fabric-quantity-cards');
+    fabricCardsContainer.appendChild(fabricRow);
+    
+    summarySection.appendChild(fabricSummaryCard);
     
     // Add Invoice Summary Report
     if (result.invoiceGroupedData && result.invoiceGroupedData.length > 0) {

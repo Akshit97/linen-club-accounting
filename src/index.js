@@ -156,6 +156,8 @@ function setupExcelProcessing() {
         unusedPurchases: result.unusedPurchases,
         supplierGroupedData: result.supplierGroupedData,
         invoiceGroupedData: result.invoiceGroupedData,
+        garmentSalesDateArray: result.garmentSalesDateArray,
+        fabricSalesDateArray: result.fabricSalesDateArray,
         summary: result.summary,
         summaryText: result.summaryText,
         // Add CSV strings
@@ -534,10 +536,23 @@ function processData(purchaseOrderData, salesTaxData) {
   let garmentPurchaseQuantity = 0;
   let garmentSaleQuantity = 0;
   
+  // Calculate fabric-specific quantities
+  let fabricPurchaseQuantity = 0;
+  let fabricSaleQuantity = 0;
+  
+  // Map to track garment sales by date
+  const garmentSalesByDate = new Map();
+  
+  // Map to track fabric sales by date
+  const fabricSalesByDate = new Map();
+  
   // Track items from garment suppliers
   const garmentSupplierItems = new Set();
   
-  // Check purchase order data for garment suppliers
+  // Track items from fabric suppliers
+  const fabricSupplierItems = new Set();
+  
+  // Check purchase order data for garment and fabric suppliers
   purchaseOrderData.forEach(item => {
     const supplierName = (item['Suppiler Name'] || '').toLowerCase();
     const itemId = item['Item Id']?.toString();
@@ -550,18 +565,100 @@ function processData(purchaseOrderData, salesTaxData) {
       // Track this item as coming from a garment supplier
       garmentSupplierItems.add(itemId);
     }
+    
+    if (supplierName.includes('fabric') && itemId) {
+      // Add to fabric purchase quantity
+      const quantity = parseNumberValue(item['Received Qty']);
+      fabricPurchaseQuantity += quantity;
+      
+      // Track this item as coming from a fabric supplier
+      fabricSupplierItems.add(itemId);
+    }
   });
   
   // Check sales data for items from garment suppliers
   salesTaxData.forEach(item => {
     const itemId = item['Item Id']?.toString();
+    const quantity = parseNumberValue(item['Qty']);
     
+    // Process garment sales
     if (itemId && garmentSupplierItems.has(itemId)) {
       // Add to garment sale quantity
-      const quantity = parseNumberValue(item['Qty']);
       garmentSaleQuantity += quantity;
+      
+      // Get the sale date
+      let saleDate = item['Date'] || 'Unknown Date';
+      
+      // Standardize date format if possible
+      if (saleDate !== 'Unknown Date') {
+        try {
+          const dateObj = new Date(saleDate);
+          if (!isNaN(dateObj.getTime())) {
+            // Format as YYYY-MM-DD
+            saleDate = dateObj.toISOString().split('T')[0];
+          }
+        } catch (e) {
+          // Keep original format if parsing fails
+        }
+      }
+      
+      // Update sales by date
+      if (!garmentSalesByDate.has(saleDate)) {
+        garmentSalesByDate.set(saleDate, {
+          date: saleDate,
+          quantity: 0,
+          amount: 0
+        });
+      }
+      
+      const dateEntry = garmentSalesByDate.get(saleDate);
+      dateEntry.quantity += quantity;
+      dateEntry.amount += (parseNumberValue(item['Net Amount']) + parseNumberValue(item['CGST Tax Amount']) + parseNumberValue(item['SGST Tax Amount']));
+    }
+    
+    // Process fabric sales
+    if (itemId && fabricSupplierItems.has(itemId)) {
+      // Add to fabric sale quantity
+      fabricSaleQuantity += quantity;
+      
+      // Get the sale date
+      let saleDate = item['Date'] || 'Unknown Date';
+      
+      // Standardize date format if possible
+      if (saleDate !== 'Unknown Date') {
+        try {
+          const dateObj = new Date(saleDate);
+          if (!isNaN(dateObj.getTime())) {
+            // Format as YYYY-MM-DD
+            saleDate = dateObj.toISOString().split('T')[0];
+          }
+        } catch (e) {
+          // Keep original format if parsing fails
+        }
+      }
+      
+      // Update sales by date
+      if (!fabricSalesByDate.has(saleDate)) {
+        fabricSalesByDate.set(saleDate, {
+          date: saleDate,
+          quantity: 0,
+          amount: 0
+        });
+      }
+      
+      const dateEntry = fabricSalesByDate.get(saleDate);
+      dateEntry.quantity += quantity;
+      dateEntry.amount += (parseNumberValue(item['Net Amount']) + parseNumberValue(item['CGST Tax Amount']) + parseNumberValue(item['SGST Tax Amount']));
     }
   });
+  
+  // Convert sales by date to sorted array for garment
+  const garmentSalesDateArray = Array.from(garmentSalesByDate.values());
+  garmentSalesDateArray.sort((a, b) => a.date.localeCompare(b.date));
+  
+  // Convert sales by date to sorted array for fabric
+  const fabricSalesDateArray = Array.from(fabricSalesByDate.values());
+  fabricSalesDateArray.sort((a, b) => a.date.localeCompare(b.date));
   
   // Generate summary with focus on totals
   const summary = {
@@ -580,6 +677,10 @@ function processData(purchaseOrderData, salesTaxData) {
     // Garment quantities
     garmentPurchaseQuantity,
     garmentSaleQuantity,
+    
+    // Fabric quantities
+    fabricPurchaseQuantity,
+    fabricSaleQuantity,
     
     // Profit Percentage
     profitPercentage: totalPurchaseAmount > 0 
@@ -610,6 +711,11 @@ Garment Supplier Summary:
 Garment Purchase Quantity: ${garmentPurchaseQuantity.toFixed(2)}
 Garment Sale Quantity: ${garmentSaleQuantity.toFixed(2)}
 
+Fabric Supplier Summary:
+-----------------------------------------
+Fabric Purchase Quantity: ${fabricPurchaseQuantity.toFixed(2)}
+Fabric Sale Quantity: ${fabricSaleQuantity.toFixed(2)}
+
 Data Statistics:
 -----------------------------------------
 Purchase Orders: ${summary.purchaseOrderCount}
@@ -627,6 +733,8 @@ Unused Purchases: ${summary.unusedPurchasesCount}
     unusedPurchases,
     supplierGroupedData,
     invoiceGroupedData,
+    garmentSalesDateArray,
+    fabricSalesDateArray,
     summary,
     summaryText
   };
