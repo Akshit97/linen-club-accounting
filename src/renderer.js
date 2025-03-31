@@ -152,6 +152,52 @@ document.addEventListener('DOMContentLoaded', () => {
     
     summarySection.appendChild(highlightsRow);
     
+    // Add Supplier Profit Report
+    if (result.supplierGroupedData && result.supplierGroupedData.length > 0) {
+      const supplierReportCard = document.createElement('div');
+      supplierReportCard.className = 'card mb-4';
+      supplierReportCard.innerHTML = `
+        <div class="card-header">
+          <i class="bi bi-shop me-2"></i>Supplier Profit Report
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0">
+              <thead>
+                <tr>
+                  <th>Supplier Name</th>
+                  <th class="text-end">Purchase</th>
+                  <th class="text-end">Sale</th>
+                  <th class="text-end">Profit</th>
+                  <th class="text-end">Profit %</th>
+                  <th class="text-end">Commission %</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${result.supplierGroupedData.map(supplier => {
+                  const isTotal = supplier.supplierName === 'Total';
+                  const rowClass = isTotal ? 'table-primary fw-bold' : '';
+                  const profitClass = parseFloat(supplier.profit) >= 0 ? 'text-success' : 'text-danger';
+                  
+                  return `
+                    <tr class="${rowClass}">
+                      <td>${supplier.supplierName}</td>
+                      <td class="text-end">${supplier.purchaseAmount.toLocaleString('en-IN', {maximumFractionDigits: 2})}</td>
+                      <td class="text-end">${supplier.saleAmount.toLocaleString('en-IN', {maximumFractionDigits: 2})}</td>
+                      <td class="text-end ${profitClass}">${supplier.profit.toLocaleString('en-IN', {maximumFractionDigits: 2})}</td>
+                      <td class="text-end">${supplier.profitPercentage}%</td>
+                      <td class="text-end">${supplier.commissionPercentage}%</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+      summarySection.appendChild(supplierReportCard);
+    }
+    
     // Add record count statistics
     const statsCard = document.createElement('div');
     statsCard.className = 'card mb-4';
@@ -222,6 +268,13 @@ document.addEventListener('DOMContentLoaded', () => {
               <div>
                 <div><strong>Summary</strong></div>
                 <div class="text-muted small text-break">${result.outputFiles.summaryOutputPath}</div>
+              </div>
+            </li>
+            <li class="list-group-item d-flex align-items-center">
+              <i class="bi bi-file-earmark-spreadsheet me-3 text-secondary"></i>
+              <div>
+                <div><strong>Supplier Profit Report</strong></div>
+                <div class="text-muted small text-break">${result.outputFiles.supplierGroupedDataOutputPath}</div>
               </div>
             </li>
           </ul>

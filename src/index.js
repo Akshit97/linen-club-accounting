@@ -119,6 +119,7 @@ function setupExcelProcessing() {
       const matchedDataCSV = convertToCSV(result.matchedData);
       const salesWithoutPurchaseCSV = convertToCSV(result.salesWithoutPurchase);
       const unusedPurchasesCSV = convertToCSV(result.unusedPurchases);
+      const supplierGroupedDataCSV = convertToCSV(result.supplierGroupedData);
       
       // Write the updated purchase order data to a CSV file
       const outputDir = path.dirname(purchaseOrderFilePath);
@@ -133,6 +134,10 @@ function setupExcelProcessing() {
       const matchedDataOutputPath = path.join(outputDir, 'matched_data.csv');
       fs.writeFileSync(matchedDataOutputPath, matchedDataCSV);
       
+      // Write the supplier grouped data to a CSV file
+      const supplierGroupedDataOutputPath = path.join(outputDir, 'supplier_grouped_data.csv');
+      fs.writeFileSync(supplierGroupedDataOutputPath, supplierGroupedDataCSV);
+      
       // Write the summary to a text file
       const summaryOutputPath = path.join(outputDir, 'summary.txt');
       fs.writeFileSync(summaryOutputPath, result.summaryText);
@@ -144,6 +149,7 @@ function setupExcelProcessing() {
         matchedData: result.matchedData,
         salesWithoutPurchase: result.salesWithoutPurchase,
         unusedPurchases: result.unusedPurchases,
+        supplierGroupedData: result.supplierGroupedData,
         summary: result.summary,
         summaryText: result.summaryText,
         // Add CSV strings
@@ -152,11 +158,13 @@ function setupExcelProcessing() {
         matchedDataCSV: matchedDataCSV,
         salesWithoutPurchaseCSV: salesWithoutPurchaseCSV,
         unusedPurchasesCSV: unusedPurchasesCSV,
+        supplierGroupedDataCSV: supplierGroupedDataCSV,
         // Add output file paths
         outputFiles: {
           purchaseOrderOutputPath,
           salesTaxOutputPath,
           matchedDataOutputPath,
+          supplierGroupedDataOutputPath,
           summaryOutputPath
         }
       };
@@ -528,8 +536,16 @@ function processData(purchaseOrderData, salesTaxData) {
     // Profit Percentage
     profitPercentage: totalPurchaseAmount > 0 
       ? ((totalSaleAmount - totalPurchaseAmount) / totalPurchaseAmount * 100).toFixed(2) + '%'
+      : 'N/A',
+      
+    // Commission Percentage (Profit/Sale)
+    commissionPercentage: totalSaleAmount > 0
+      ? ((totalSaleAmount - totalPurchaseAmount) / totalSaleAmount * 100).toFixed(2) + '%'
       : 'N/A'
   };
+  
+  // Group data by supplier name
+  const supplierGroupedData = groupDataBySupplier(matchedData);
   
   // Generate a more descriptive summary text
   const summaryText = `
@@ -537,8 +553,9 @@ Summary:
 -----------------------------------------
 Total Purchase Amount: ${totalPurchaseAmount.toFixed(2)}
 Total Sale Amount: ${totalSaleAmount.toFixed(2)}
-Difference (Sale - Purchase): ${(totalSaleAmount - totalPurchaseAmount).toFixed(2)}
+Profit (Sale - Purchase): ${(totalSaleAmount - totalPurchaseAmount).toFixed(2)}
 Profit Percentage: ${summary.profitPercentage}
+Commission Percentage: ${summary.commissionPercentage}
 
 Data Statistics:
 -----------------------------------------
@@ -555,9 +572,87 @@ Unused Purchases: ${summary.unusedPurchasesCount}
     matchedData,
     salesWithoutPurchase,
     unusedPurchases,
+    supplierGroupedData,
     summary,
     summaryText
   };
+}
+
+/**
+ * Groups financial data by supplier name
+ * @param {Array} matchedData - Array of matched sales and purchase data
+ * @returns {Array} Array of supplier grouped summaries
+ */
+function groupDataBySupplier(matchedData) {
+  // Create a map to store supplier grouped data
+  const supplierMap = new Map();
+  
+  // Process each matched data item
+  matchedData.forEach(item => {
+    const supplierName = item['Suppiler Name'] || 'Unknown Supplier';
+    const purchaseAmount = parseNumberValue(item['Total Purchase Amount']) || 0;
+    const saleAmount = parseNumberValue(item['Total Sale Amount']) || 0;
+    
+    // Get or create supplier entry
+    if (!supplierMap.has(supplierName)) {
+      supplierMap.set(supplierName, {
+        supplierName,
+        purchaseAmount: 0,
+        saleAmount: 0,
+        count: 0
+      });
+    }
+    
+    // Update supplier totals
+    const supplierData = supplierMap.get(supplierName);
+    supplierData.purchaseAmount += purchaseAmount;
+    supplierData.saleAmount += saleAmount;
+    supplierData.count++;
+  });
+  
+  // Convert map to array and calculate percentages
+  const result = Array.from(supplierMap.values()).map(supplier => {
+    const profit = supplier.saleAmount - supplier.purchaseAmount;
+    const profitPercentage = supplier.purchaseAmount > 0 
+      ? (profit / supplier.purchaseAmount * 100).toFixed(2)
+      : 0;
+    const commissionPercentage = supplier.saleAmount > 0
+      ? (profit / supplier.saleAmount * 100).toFixed(2)
+      : 0;
+      
+    return {
+      supplierName: supplier.supplierName,
+      purchaseAmount: supplier.purchaseAmount,
+      saleAmount: supplier.saleAmount,
+      profit,
+      profitPercentage,
+      commissionPercentage,
+      count: supplier.count
+    };
+  });
+  
+  // Sort by profit in descending order
+  result.sort((a, b) => b.profit - a.profit);
+  
+  // Add a total row
+  const totalRow = {
+    supplierName: 'Total',
+    purchaseAmount: result.reduce((sum, supplier) => sum + supplier.purchaseAmount, 0),
+    saleAmount: result.reduce((sum, supplier) => sum + supplier.saleAmount, 0),
+    count: result.reduce((sum, supplier) => sum + supplier.count, 0)
+  };
+  
+  totalRow.profit = totalRow.saleAmount - totalRow.purchaseAmount;
+  totalRow.profitPercentage = totalRow.purchaseAmount > 0 
+    ? (totalRow.profit / totalRow.purchaseAmount * 100).toFixed(2)
+    : 0;
+  totalRow.commissionPercentage = totalRow.saleAmount > 0
+    ? (totalRow.profit / totalRow.saleAmount * 100).toFixed(2)
+    : 0;
+  
+  result.push(totalRow);
+  
+  return result;
 }
 
 // Helper function to prefix keys in an object to avoid collisions
