@@ -115,14 +115,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Helper to create financial highlight cards
     function createHighlightCard(label, value, colorClass) {
       const col = document.createElement('div');
-      col.className = 'col-md-6 col-lg-3';
+      col.className = 'col-sm-6 col-lg-3';
       
       col.innerHTML = `
         <div class="card h-100">
           <div class="card-body p-3">
             <div class="financial-highlight">
               <div class="highlight-label">${label}</div>
-              <div class="highlight-value ${colorClass}">${value}</div>
+              <div class="highlight-value ${colorClass}" style="white-space: nowrap;">${value}</div>
             </div>
           </div>
         </div>
@@ -130,11 +130,11 @@ document.addEventListener('DOMContentLoaded', () => {
       return col;
     }
     
-    // Format currency values
+    // Format currency values with full numbers
     const formatCurrency = (value) => {
-      return parseFloat(value).toLocaleString('en-IN', {
-        style: 'currency',
-        currency: 'INR',
+      const numValue = parseFloat(value) || 0;
+      return numValue.toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
         maximumFractionDigits: 2
       });
     };
@@ -145,9 +145,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const difference = formatCurrency(result.summary.difference || 0);
     const isDifferencePositive = (result.summary.difference || 0) >= 0;
     
-    highlightsRow.appendChild(createHighlightCard('Total Purchase', totalPurchase, 'neutral'));
-    highlightsRow.appendChild(createHighlightCard('Total Sale', totalSale, 'neutral'));
-    highlightsRow.appendChild(createHighlightCard('Profit', difference, isDifferencePositive ? 'positive' : 'negative'));
+    highlightsRow.appendChild(createHighlightCard('Total Purchase', '₹' + totalPurchase, 'neutral'));
+    highlightsRow.appendChild(createHighlightCard('Total Sale', '₹' + totalSale, 'neutral'));
+    highlightsRow.appendChild(createHighlightCard('Profit', '₹' + difference, isDifferencePositive ? 'positive' : 'negative'));
     highlightsRow.appendChild(createHighlightCard('Profit %', result.summary.profitPercentage || 'N/A', isDifferencePositive ? 'positive' : 'negative'));
     
     summarySection.appendChild(highlightsRow);
@@ -166,11 +166,11 @@ document.addEventListener('DOMContentLoaded', () => {
               <thead>
                 <tr>
                   <th>Supplier Name</th>
-                  <th class="text-end">Purchase</th>
-                  <th class="text-end">Sale</th>
-                  <th class="text-end">Profit</th>
-                  <th class="text-end">Profit %</th>
-                  <th class="text-end">Commission %</th>
+                  <th class="text-end" style="white-space: nowrap;">Purchase</th>
+                  <th class="text-end" style="white-space: nowrap;">Sale</th>
+                  <th class="text-end" style="white-space: nowrap;">Profit</th>
+                  <th class="text-end" style="white-space: nowrap;">Profit %</th>
+                  <th class="text-end" style="white-space: nowrap;">Commission %</th>
                 </tr>
               </thead>
               <tbody>
@@ -179,14 +179,22 @@ document.addEventListener('DOMContentLoaded', () => {
                   const rowClass = isTotal ? 'table-primary fw-bold' : '';
                   const profitClass = parseFloat(supplier.profit) >= 0 ? 'text-success' : 'text-danger';
                   
+                  // Format all numeric values with consistent formatting
+                  const formatNumber = (value) => {
+                    return parseFloat(value).toLocaleString('en-IN', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    });
+                  };
+                  
                   return `
                     <tr class="${rowClass}">
                       <td>${supplier.supplierName}</td>
-                      <td class="text-end">${supplier.purchaseAmount.toLocaleString('en-IN', {maximumFractionDigits: 2})}</td>
-                      <td class="text-end">${supplier.saleAmount.toLocaleString('en-IN', {maximumFractionDigits: 2})}</td>
-                      <td class="text-end ${profitClass}">${supplier.profit.toLocaleString('en-IN', {maximumFractionDigits: 2})}</td>
-                      <td class="text-end">${supplier.profitPercentage}%</td>
-                      <td class="text-end">${supplier.commissionPercentage}%</td>
+                      <td class="text-end" style="white-space: nowrap;">₹${formatNumber(supplier.purchaseAmount)}</td>
+                      <td class="text-end" style="white-space: nowrap;">₹${formatNumber(supplier.saleAmount)}</td>
+                      <td class="text-end ${profitClass}" style="white-space: nowrap;">₹${formatNumber(supplier.profit)}</td>
+                      <td class="text-end" style="white-space: nowrap;">${supplier.profitPercentage}%</td>
+                      <td class="text-end" style="white-space: nowrap;">${supplier.commissionPercentage}%</td>
                     </tr>
                   `;
                 }).join('')}
