@@ -120,6 +120,7 @@ function setupExcelProcessing() {
       const salesWithoutPurchaseCSV = convertToCSV(result.salesWithoutPurchase);
       const unusedPurchasesCSV = convertToCSV(result.unusedPurchases);
       const supplierGroupedDataCSV = convertToCSV(result.supplierGroupedData);
+      const invoiceGroupedDataCSV = convertToCSV(result.invoiceGroupedData);
       
       // Write the updated purchase order data to a CSV file
       const outputDir = path.dirname(purchaseOrderFilePath);
@@ -138,6 +139,10 @@ function setupExcelProcessing() {
       const supplierGroupedDataOutputPath = path.join(outputDir, 'supplier_grouped_data.csv');
       fs.writeFileSync(supplierGroupedDataOutputPath, supplierGroupedDataCSV);
       
+      // Write the invoice grouped data to a CSV file
+      const invoiceGroupedDataOutputPath = path.join(outputDir, 'invoice_grouped_data.csv');
+      fs.writeFileSync(invoiceGroupedDataOutputPath, invoiceGroupedDataCSV);
+      
       // Write the summary to a text file
       const summaryOutputPath = path.join(outputDir, 'summary.txt');
       fs.writeFileSync(summaryOutputPath, result.summaryText);
@@ -150,6 +155,7 @@ function setupExcelProcessing() {
         salesWithoutPurchase: result.salesWithoutPurchase,
         unusedPurchases: result.unusedPurchases,
         supplierGroupedData: result.supplierGroupedData,
+        invoiceGroupedData: result.invoiceGroupedData,
         summary: result.summary,
         summaryText: result.summaryText,
         // Add CSV strings
@@ -159,12 +165,14 @@ function setupExcelProcessing() {
         salesWithoutPurchaseCSV: salesWithoutPurchaseCSV,
         unusedPurchasesCSV: unusedPurchasesCSV,
         supplierGroupedDataCSV: supplierGroupedDataCSV,
+        invoiceGroupedDataCSV: invoiceGroupedDataCSV,
         // Add output file paths
         outputFiles: {
           purchaseOrderOutputPath,
           salesTaxOutputPath,
           matchedDataOutputPath,
           supplierGroupedDataOutputPath,
+          invoiceGroupedDataOutputPath,
           summaryOutputPath
         }
       };
@@ -519,6 +527,9 @@ function processData(purchaseOrderData, salesTaxData) {
     }
   });
   
+  // Group purchase orders by invoice number for summary
+  const invoiceGroupedData = groupPurchaseOrdersByInvoice(purchaseOrderData);
+  
   // Generate summary with focus on totals
   const summary = {
     // Data counts
@@ -573,9 +584,61 @@ Unused Purchases: ${summary.unusedPurchasesCount}
     salesWithoutPurchase,
     unusedPurchases,
     supplierGroupedData,
+    invoiceGroupedData,
     summary,
     summaryText
   };
+}
+
+/**
+ * Groups purchase orders by invoice number and calculates total values
+ * @param {Array} purchaseOrderData - Array of purchase order data
+ * @returns {Array} Array of invoice-grouped summaries
+ */
+function groupPurchaseOrdersByInvoice(purchaseOrderData) {
+  // Create a map to store invoice grouped data
+  const invoiceMap = new Map();
+  
+  // Process each purchase order item
+  purchaseOrderData.forEach(item => {
+    const invoiceNumber = item['Invoice Number'] || 'Unknown Invoice';
+    const grossValue = parseNumberValue(item['Gross Value']) || 0;
+    
+    // Get or create invoice entry
+    if (!invoiceMap.has(invoiceNumber)) {
+      invoiceMap.set(invoiceNumber, {
+        invoiceNumber,
+        grossValue: 0,
+        itemCount: 0,
+        supplierName: item['Suppiler Name'] || 'Unknown Supplier',
+        invoiceDate: item['Invoice Date'] || ''
+      });
+    }
+    
+    // Update invoice totals
+    const invoiceData = invoiceMap.get(invoiceNumber);
+    invoiceData.grossValue += grossValue;
+    invoiceData.itemCount++;
+  });
+  
+  // Convert map to array
+  const result = Array.from(invoiceMap.values());
+  
+  // Sort by invoice number
+  result.sort((a, b) => a.invoiceNumber.localeCompare(b.invoiceNumber));
+  
+  // Add a total row
+  const totalRow = {
+    invoiceNumber: 'Total',
+    grossValue: result.reduce((sum, invoice) => sum + invoice.grossValue, 0),
+    itemCount: result.reduce((sum, invoice) => sum + invoice.itemCount, 0),
+    supplierName: '',
+    invoiceDate: ''
+  };
+  
+  result.push(totalRow);
+  
+  return result;
 }
 
 /**

@@ -206,6 +206,57 @@ document.addEventListener('DOMContentLoaded', () => {
       summarySection.appendChild(supplierReportCard);
     }
     
+    // Add Invoice Summary Report
+    if (result.invoiceGroupedData && result.invoiceGroupedData.length > 0) {
+      const invoiceReportCard = document.createElement('div');
+      invoiceReportCard.className = 'card mb-4';
+      invoiceReportCard.innerHTML = `
+        <div class="card-header">
+          <i class="bi bi-receipt me-2"></i>Invoice Summary Report
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0">
+              <thead>
+                <tr>
+                  <th>Invoice Number</th>
+                  <th>Supplier Name</th>
+                  <th>Invoice Date</th>
+                  <th class="text-end" style="white-space: nowrap;">Gross Value</th>
+                  <th class="text-end" style="white-space: nowrap;">Items</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${result.invoiceGroupedData.map(invoice => {
+                  const isTotal = invoice.invoiceNumber === 'Total';
+                  const rowClass = isTotal ? 'table-primary fw-bold' : '';
+                  
+                  // Format all numeric values with consistent formatting
+                  const formatNumber = (value) => {
+                    return parseFloat(value).toLocaleString('en-IN', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    });
+                  };
+                  
+                  return `
+                    <tr class="${rowClass}">
+                      <td>${invoice.invoiceNumber}</td>
+                      <td>${invoice.supplierName}</td>
+                      <td>${invoice.invoiceDate}</td>
+                      <td class="text-end" style="white-space: nowrap;">₹${formatNumber(invoice.grossValue)}</td>
+                      <td class="text-end" style="white-space: nowrap;">${invoice.itemCount}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+      summarySection.appendChild(invoiceReportCard);
+    }
+    
     // Add record count statistics
     const statsCard = document.createElement('div');
     statsCard.className = 'card mb-4';
@@ -283,6 +334,13 @@ document.addEventListener('DOMContentLoaded', () => {
               <div>
                 <div><strong>Supplier Profit Report</strong></div>
                 <div class="text-muted small text-break">${result.outputFiles.supplierGroupedDataOutputPath}</div>
+              </div>
+            </li>
+            <li class="list-group-item d-flex align-items-center">
+              <i class="bi bi-file-earmark-spreadsheet me-3 text-info"></i>
+              <div>
+                <div><strong>Invoice Summary Report</strong></div>
+                <div class="text-muted small text-break">${result.outputFiles.invoiceGroupedDataOutputPath}</div>
               </div>
             </li>
           </ul>
