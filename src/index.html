@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Linen Club Accounting</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="index.css" />
+  </head>
+  <body>
+    <div class="container mt-5">
+      <div class="row">
+        <div class="col-12 text-center mb-4">
+          <h1>Linen Club Accounting</h1>
+          <p class="lead">Upload purchase order and sales tax reports for processing</p>
+        </div>
+      </div>
+      
+      <div class="row justify-content-center">
+        <div class="col-md-6">
+          <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0">Upload Reports</h5>
+            </div>
+            <div class="card-body">
+              <form id="uploadForm">
+                <div class="mb-3">
+                  <label for="purchaseOrderFile" class="form-label">Purchase Order Report (XLSX)</label>
+                  <button type="button" id="purchaseOrderFile" class="form-control file-button">Select Purchase Order File</button>
+                </div>
+                <div class="mb-3">
+                  <label for="salesTaxFile" class="form-label">Sales Tax Report (XLSX)</label>
+                  <button type="button" id="salesTaxFile" class="form-control file-button">Select Sales Tax File</button>
+                </div>
+                <button type="button" id="processBtn" class="btn btn-primary w-100">Process Reports</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header bg-success text-white">
+              <h5 class="mb-0">Results</h5>
+            </div>
+            <div class="card-body">
+              <div id="results" class="results-container">
+                <p class="text-center text-muted">Results will appear here after processing</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row mt-3">
+        <div class="col-12">
+          <div id="loadingSpinner" class="d-none text-center">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Processing files, please wait...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="renderer.js"></script>
+  </body>
+</html>
