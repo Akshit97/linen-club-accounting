@@ -567,11 +567,16 @@ function processData(purchaseOrderData, salesTaxData) {
     }
     
     if (supplierName.includes('fabric') && itemId) {
-      // Add to fabric purchase quantity
-      const quantity = parseNumberValue(item['Received Qty']);
-      fabricPurchaseQuantity += quantity;
+      // Ignore specific invoice number for fabric purchase quantity calculation
+      const invoiceNumber = item['Invoice Number'];
+      if (invoiceNumber !== '9000322583') {
+        // Add to fabric purchase quantity
+        const quantity = parseNumberValue(item['Received Qty']);
+        fabricPurchaseQuantity += quantity;
+      }
       
-      // Track this item as coming from a fabric supplier
+      // Always track this item as coming from a fabric supplier
+      // (still track it for sale purposes, we just don't count it in purchase quantity)
       fabricSupplierItems.add(itemId);
     }
   });
