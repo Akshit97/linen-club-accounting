@@ -135,6 +135,14 @@ function setupExcelProcessing() {
       const matchedDataOutputPath = path.join(outputDir, 'matched_data.csv');
       fs.writeFileSync(matchedDataOutputPath, matchedDataCSV);
       
+      // Write the sales without purchase data to a CSV file
+      const salesWithoutPurchaseOutputPath = path.join(outputDir, 'sales_without_purchase.csv');
+      fs.writeFileSync(salesWithoutPurchaseOutputPath, salesWithoutPurchaseCSV);
+      
+      // Write the unused purchases data to a CSV file
+      const unusedPurchasesOutputPath = path.join(outputDir, 'unused_purchases.csv');
+      fs.writeFileSync(unusedPurchasesOutputPath, unusedPurchasesCSV);
+      
       // Write the supplier grouped data to a CSV file
       const supplierGroupedDataOutputPath = path.join(outputDir, 'supplier_grouped_data.csv');
       fs.writeFileSync(supplierGroupedDataOutputPath, supplierGroupedDataCSV);
@@ -173,6 +181,8 @@ function setupExcelProcessing() {
           purchaseOrderOutputPath,
           salesTaxOutputPath,
           matchedDataOutputPath,
+          salesWithoutPurchaseOutputPath,
+          unusedPurchasesOutputPath,
           supplierGroupedDataOutputPath,
           invoiceGroupedDataOutputPath,
           summaryOutputPath
@@ -349,6 +359,15 @@ function convertToCSV(objArray) {
   });
   
   return csvRows.join('\n');
+}
+
+// For DD-MM-YYYY format
+
+function parseDate(dateStr) {
+  const parts = dateStr.split('-');
+  // Instead of using Date object which can have timezone issues,
+  // directly format the string in YYYY-MM-DD format
+  return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
 }
 
 // Helper function to parse a string to a number, handling currency symbols and other non-numeric characters
@@ -597,11 +616,9 @@ function processData(purchaseOrderData, salesTaxData) {
       // Standardize date format if possible
       if (saleDate !== 'Unknown Date') {
         try {
-          const dateObj = new Date(saleDate);
-          if (!isNaN(dateObj.getTime())) {
-            // Format as YYYY-MM-DD
-            saleDate = dateObj.toISOString().split('T')[0];
-          }
+          // Now parseDate returns a string in YYYY-MM-DD format
+          saleDate = parseDate(saleDate);
+          // No need for Date object conversion anymore
         } catch (e) {
           // Keep original format if parsing fails
         }
@@ -632,11 +649,9 @@ function processData(purchaseOrderData, salesTaxData) {
       // Standardize date format if possible
       if (saleDate !== 'Unknown Date') {
         try {
-          const dateObj = new Date(saleDate);
-          if (!isNaN(dateObj.getTime())) {
-            // Format as YYYY-MM-DD
-            saleDate = dateObj.toISOString().split('T')[0];
-          }
+          // Now parseDate returns a string in YYYY-MM-DD format
+          saleDate = parseDate(saleDate);
+          // No need for Date object conversion anymore
         } catch (e) {
           // Keep original format if parsing fails
         }
