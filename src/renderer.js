@@ -6,18 +6,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const processBtn = document.getElementById('processBtn');
   const resultsDiv = document.getElementById('results');
   const loadingSpinner = document.getElementById('loadingSpinner');
+  const fileCountBadge = document.getElementById('fileCountBadge');
+  const selectedFilesList = document.getElementById('selectedFilesList');
   
   // Store selected file paths
-  let purchaseOrderPath = null;
+  let purchaseOrderPaths = [];
   let salesTaxPath = null;
 
-  // Purchase order file selection
+  // Purchase order file selection - now handles multiple files
   purchaseOrderInput.addEventListener('click', async () => {
-    const filePath = await window.electronAPI.openFile('Select Purchase Order Report');
-    if (filePath) {
-      purchaseOrderPath = filePath;
-      const fileNameOnly = filePath.split('/').pop();
-      updateFileSelectionUI(purchaseOrderInput, fileNameOnly);
+    const filePaths = await window.electronAPI.openMultipleFiles('Select Purchase Order Report(s)');
+    if (filePaths && filePaths.length > 0) {
+      purchaseOrderPaths = filePaths;
+      updatePurchaseOrderSelectionUI(filePaths);
     }
   });
 
@@ -31,7 +32,45 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Helper function to update UI after file selection
+  // Helper function to update Purchase Order selection UI for multiple files
+  function updatePurchaseOrderSelectionUI(filePaths) {
+    // Add selected class to the upload box
+    purchaseOrderInput.classList.add('file-selected');
+    
+    // Update text content
+    const textSpan = purchaseOrderInput.querySelector('span');
+    if (textSpan) {
+      textSpan.textContent = `${filePaths.length} file(s) selected`;
+    }
+    
+    // Add a file icon if not already present
+    const icon = purchaseOrderInput.querySelector('i');
+    if (icon) {
+      icon.className = 'bi bi-file-earmark-check d-block';
+    }
+    
+    // Update file count badge
+    fileCountBadge.textContent = filePaths.length;
+    fileCountBadge.classList.remove('d-none');
+    
+    // Update the files list
+    selectedFilesList.innerHTML = '';
+    selectedFilesList.classList.remove('d-none');
+    
+    filePaths.forEach((path, index) => {
+      const fileNameOnly = path.split('/').pop();
+      const fileItem = document.createElement('div');
+      fileItem.className = 'selected-file-item';
+      fileItem.innerHTML = `
+        <div class="text-truncate" title="${fileNameOnly}" style="max-width: 90%;">
+          ${index + 1}. ${fileNameOnly}
+        </div>
+      `;
+      selectedFilesList.appendChild(fileItem);
+    });
+  }
+
+  // Helper function to update UI after single file selection
   function updateFileSelectionUI(element, fileName) {
     // Add selected class to the upload box
     element.classList.add('file-selected');
@@ -52,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Process button click handler
   processBtn.addEventListener('click', async () => {
     // Validate inputs
-    if (!purchaseOrderPath || !salesTaxPath) {
+    if (purchaseOrderPaths.length === 0 || !salesTaxPath) {
       showError('Please select both Purchase Order and Sales Tax reports');
       return;
     }
@@ -61,11 +100,21 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleLoading(true);
 
     try {
-      // Send files to the main process for processing via IPC
-      const result = await window.electronAPI.processExcelFiles(
-        purchaseOrderPath, 
-        salesTaxPath
-      );
+      let result;
+      
+      if (purchaseOrderPaths.length === 1) {
+        // Single file processing
+        result = await window.electronAPI.processExcelFiles(
+          purchaseOrderPaths[0], 
+          salesTaxPath
+        );
+      } else {
+        // Multiple files processing
+        result = await window.electronAPI.processMultipleExcelFiles(
+          purchaseOrderPaths, 
+          salesTaxPath
+        );
+      }
       
       // Display results
       displayResults(result);

@@ -65,6 +65,24 @@ app.on('window-all-closed', () => {
 
 // Setup file dialog handler
 function setupFileDialogHandler() {
+  // Handler for selecting multiple purchase order files
+  ipcMain.handle('dialog:openMultipleFiles', async (event, title) => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: title || 'Select Files',
+      properties: ['openFile', 'multiSelections'],
+      filters: [
+        { name: 'Excel Files', extensions: ['xlsx', 'xls'] }
+      ]
+    });
+    
+    if (canceled || filePaths.length === 0) {
+      return [];
+    }
+    
+    return filePaths;
+  });
+
+  // Existing handler for single file selection
   ipcMain.handle('dialog:openFile', async (event, title) => {
     const { canceled, filePaths } = await dialog.showOpenDialog({
       title: title || 'Select File',
@@ -84,6 +102,134 @@ function setupFileDialogHandler() {
 
 // Setup IPC handlers for Excel processing
 function setupExcelProcessing() {
+  // New handler for processing multiple purchase order files
+  ipcMain.handle('process-excel-files-multi', async (event, purchaseOrderFilePaths, salesTaxFilePath) => {
+    try {
+      console.log('Processing files:', purchaseOrderFilePaths, salesTaxFilePath);
+      
+      if (!purchaseOrderFilePaths || purchaseOrderFilePaths.length === 0 || !salesTaxFilePath) {
+        throw new Error('File paths are required');
+      }
+      
+      // Array to store combined purchase order data
+      let combinedPurchaseOrderData = [];
+      
+      // Process each purchase order file
+      for (const purchaseOrderFilePath of purchaseOrderFilePaths) {
+        console.log(`Processing purchase order file: ${purchaseOrderFilePath}`);
+        
+        // Read and process purchase order data
+        const poWorkbook = XLSX.readFile(purchaseOrderFilePath);
+        const poWorksheet = poWorkbook.Sheets[poWorkbook.SheetNames[0]];
+        
+        // Convert to CSV string first
+        const purchaseOrderCSV = XLSX.utils.sheet_to_csv(poWorksheet);
+        // Parse CSV string to array of objects
+        const purchaseOrderData = parseCSV(purchaseOrderCSV);
+        
+        // Add to combined data
+        combinedPurchaseOrderData = [...combinedPurchaseOrderData, ...purchaseOrderData];
+      }
+      
+      console.log(`Combined purchase order data count: ${combinedPurchaseOrderData.length}`);
+      
+      // Read and process sales tax data
+      const stWorkbook = XLSX.readFile(salesTaxFilePath);
+      const stWorksheet = stWorkbook.Sheets[stWorkbook.SheetNames[0]];
+      
+      // Convert to CSV string first
+      const salesTaxCSV = XLSX.utils.sheet_to_csv(stWorksheet);
+      // Parse CSV string to array of objects
+      const salesTaxData = parseCSV(salesTaxCSV);
+      
+      // Process and match the data
+      const result = processData(combinedPurchaseOrderData, salesTaxData);
+      
+      // Generate CSV outputs
+      const purchaseOrderOutputCSV = convertToCSV(result.purchaseOrderData);
+      const salesTaxOutputCSV = convertToCSV(result.salesTaxData);
+      const matchedDataCSV = convertToCSV(result.matchedData);
+      const salesWithoutPurchaseCSV = convertToCSV(result.salesWithoutPurchase);
+      const unusedPurchasesCSV = convertToCSV(result.unusedPurchases);
+      const supplierGroupedDataCSV = convertToCSV(result.supplierGroupedData);
+      const invoiceGroupedDataCSV = convertToCSV(result.invoiceGroupedData);
+      
+      // Use the directory of the first purchase order file for output
+      const outputDir = path.dirname(purchaseOrderFilePaths[0]);
+      const purchaseOrderOutputPath = path.join(outputDir, 'updated_purchase_order_data.csv');
+      fs.writeFileSync(purchaseOrderOutputPath, purchaseOrderOutputCSV);
+      
+      // Write the sales tax data to a CSV file
+      const salesTaxOutputPath = path.join(outputDir, 'updated_sales_tax_data.csv');
+      fs.writeFileSync(salesTaxOutputPath, salesTaxOutputCSV);
+      
+      // Write the matched data to a CSV file
+      const matchedDataOutputPath = path.join(outputDir, 'matched_data.csv');
+      fs.writeFileSync(matchedDataOutputPath, matchedDataCSV);
+      
+      // Write the sales without purchase data to a CSV file
+      const salesWithoutPurchaseOutputPath = path.join(outputDir, 'sales_without_purchase.csv');
+      fs.writeFileSync(salesWithoutPurchaseOutputPath, salesWithoutPurchaseCSV);
+      
+      // Write the unused purchases data to a CSV file
+      const unusedPurchasesOutputPath = path.join(outputDir, 'unused_purchases.csv');
+      fs.writeFileSync(unusedPurchasesOutputPath, unusedPurchasesCSV);
+      
+      // Write the supplier grouped data to a CSV file
+      const supplierGroupedDataOutputPath = path.join(outputDir, 'supplier_grouped_data.csv');
+      fs.writeFileSync(supplierGroupedDataOutputPath, supplierGroupedDataCSV);
+      
+      // Write the invoice grouped data to a CSV file
+      const invoiceGroupedDataOutputPath = path.join(outputDir, 'invoice_grouped_data.csv');
+      fs.writeFileSync(invoiceGroupedDataOutputPath, invoiceGroupedDataCSV);
+      
+      // Write the summary to a text file
+      const summaryOutputPath = path.join(outputDir, 'summary.txt');
+      fs.writeFileSync(summaryOutputPath, result.summaryText);
+      
+      return {
+        success: true,
+        purchaseOrderData: result.purchaseOrderData.slice(0, 50), // Limit results for performance
+        salesTaxData: result.salesTaxData.slice(0, 50), // Limit results for performance
+        matchedData: result.matchedData,
+        salesWithoutPurchase: result.salesWithoutPurchase,
+        unusedPurchases: result.unusedPurchases,
+        supplierGroupedData: result.supplierGroupedData,
+        invoiceGroupedData: result.invoiceGroupedData,
+        garmentSalesDateArray: result.garmentSalesDateArray,
+        fabricSalesDateArray: result.fabricSalesDateArray,
+        summary: result.summary,
+        summaryText: result.summaryText,
+        // Add CSV strings
+        purchaseOrderCSV: purchaseOrderOutputCSV,
+        salesTaxCSV: salesTaxOutputCSV,
+        matchedDataCSV: matchedDataCSV,
+        salesWithoutPurchaseCSV: salesWithoutPurchaseCSV,
+        unusedPurchasesCSV: unusedPurchasesCSV,
+        supplierGroupedDataCSV: supplierGroupedDataCSV,
+        invoiceGroupedDataCSV: invoiceGroupedDataCSV,
+        // Add output file paths
+        outputFiles: {
+          purchaseOrderOutputPath,
+          salesTaxOutputPath,
+          matchedDataOutputPath,
+          salesWithoutPurchaseOutputPath,
+          unusedPurchasesOutputPath,
+          supplierGroupedDataOutputPath,
+          invoiceGroupedDataOutputPath,
+          summaryOutputPath
+        }
+      };
+    } catch (error) {
+      console.error('Error processing Excel files:', error);
+      return {
+        success: false,
+        message: `Error processing files: ${error.message}`
+      };
+    }
+  });
+  
+  // Keep the existing handler for single purchase order file processing
   ipcMain.handle('process-excel-files', async (event, purchaseOrderFilePath, salesTaxFilePath) => {
     try {
       console.log('Processing files:', purchaseOrderFilePath, salesTaxFilePath);
