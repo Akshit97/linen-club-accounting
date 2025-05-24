@@ -194,12 +194,160 @@ document.addEventListener('DOMContentLoaded', () => {
     const difference = formatCurrency(result.summary.difference || 0);
     const isDifferencePositive = (result.summary.difference || 0) >= 0;
     
-    highlightsRow.appendChild(createHighlightCard('Total Purchase', '₹' + totalPurchase, 'neutral'));
-    highlightsRow.appendChild(createHighlightCard('Total Sale', '₹' + totalSale, 'neutral'));
-    highlightsRow.appendChild(createHighlightCard('Profit', '₹' + difference, isDifferencePositive ? 'positive' : 'negative'));
-    highlightsRow.appendChild(createHighlightCard('Profit %', result.summary.profitPercentage || 'N/A', isDifferencePositive ? 'positive' : 'negative'));
+    // Calculate GST amounts
+    const totalCGST = formatCurrency(result.summary.totalCGSTAmount || 0);
+    const totalSGST = formatCurrency(result.summary.totalSGSTAmount || 0);
+    const totalGST = formatCurrency((parseFloat(result.summary.totalCGSTAmount || 0) + parseFloat(result.summary.totalSGSTAmount || 0)).toFixed(2));
     
-    summarySection.appendChild(highlightsRow);
+    // Get net profit and net amount values
+    const totalNetSale = formatCurrency(result.summary.totalNetSaleAmount || 0);
+    const totalNetPurchase = formatCurrency(result.summary.totalNetPurchaseAmount || 0);
+    const netProfit = formatCurrency(result.summary.totalNetProfit || 0);
+    const isNetProfitPositive = (parseFloat(result.summary.totalNetProfit || 0)) >= 0;
+    
+    // Create a financial metrics row
+    const metricsRow = document.createElement('div');
+    metricsRow.className = 'row g-3 mb-4';
+    
+    metricsRow.appendChild(createHighlightCard('Total Purchase', '₹' + totalPurchase, 'neutral'));
+    metricsRow.appendChild(createHighlightCard('Total Sale', '₹' + totalSale, 'neutral'));
+    metricsRow.appendChild(createHighlightCard('Gross Profit', '₹' + difference, isDifferencePositive ? 'positive' : 'negative'));
+    metricsRow.appendChild(createHighlightCard('Profit %', result.summary.profitPercentage || 'N/A', isDifferencePositive ? 'positive' : 'negative'));
+    
+    summarySection.appendChild(metricsRow);
+    
+    // Create a second row for net profit and GST
+    const netProfitRow = document.createElement('div');
+    netProfitRow.className = 'row g-3 mb-4';
+    
+    netProfitRow.appendChild(createHighlightCard('Net Sale', '₹' + totalNetSale, 'neutral'));
+    netProfitRow.appendChild(createHighlightCard('Net Purchase', '₹' + totalNetPurchase, 'neutral'));
+    netProfitRow.appendChild(createHighlightCard('Net Profit', '₹' + netProfit, isNetProfitPositive ? 'positive' : 'negative'));
+    netProfitRow.appendChild(createHighlightCard('Net Profit %', result.summary.netProfitPercentage || 'N/A', isNetProfitPositive ? 'positive' : 'negative'));
+    
+    summarySection.appendChild(netProfitRow);
+    
+    // Create a third row for GST breakdown
+    const gstRow = document.createElement('div');
+    gstRow.className = 'row g-3 mb-4';
+    
+    // Add a header for this section
+    const gstHeader = document.createElement('div');
+    gstHeader.className = 'col-12 mb-2';
+    gstHeader.innerHTML = '<h5 class="text-muted">GST Breakdown</h5>';
+    gstRow.appendChild(gstHeader);
+    
+    // Add GST breakdown cards
+    const gstCol1 = document.createElement('div');
+    gstCol1.className = 'col-md-6';
+    gstCol1.innerHTML = `
+      <div class="card h-100">
+        <div class="card-body p-3">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="text-muted mb-1">CGST Amount</div>
+              <div class="h5 mb-0">₹${totalCGST}</div>
+            </div>
+            <i class="bi bi-receipt-cutoff text-primary" style="font-size: 2rem;"></i>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    const gstCol2 = document.createElement('div');
+    gstCol2.className = 'col-md-6';
+    gstCol2.innerHTML = `
+      <div class="card h-100">
+        <div class="card-body p-3">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="text-muted mb-1">SGST Amount</div>
+              <div class="h5 mb-0">₹${totalSGST}</div>
+            </div>
+            <i class="bi bi-receipt text-success" style="font-size: 2rem;"></i>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    gstRow.appendChild(gstCol1);
+    gstRow.appendChild(gstCol2);
+    
+    summarySection.appendChild(gstRow);
+    
+    // Add GST breakdown by rate
+    const gstBreakdownData = result.summary?.gstBreakdownByRate || result.gstBreakdownByRate;
+    
+    if (gstBreakdownData && gstBreakdownData.length > 0) {
+      const gstByRateCard = document.createElement('div');
+      gstByRateCard.className = 'card mb-4';
+      
+      let gstByRateHtml = `
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <div>
+            <i class="bi bi-percent me-2"></i>GST Breakdown by Rate
+          </div>
+          <div>
+            <span class="badge bg-info">${gstBreakdownData.length} different rates</span>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0">
+              <thead>
+                <tr>
+                  <th>Rate</th>
+                  <th class="text-end">Sale CGST</th>
+                  <th class="text-end">Sale SGST</th>
+                  <th class="text-end">Purchase GST</th>
+                  <th class="text-end">Net GST</th>
+                  <th class="text-end">Items</th>
+                </tr>
+              </thead>
+              <tbody>
+      `;
+      
+      // Add rows for each GST rate
+      gstBreakdownData.forEach(entry => {
+        gstByRateHtml += `
+          <tr>
+            <td><strong>${entry.rate}</strong></td>
+            <td class="text-end">₹${formatCurrency(entry.cgstAmount)}</td>
+            <td class="text-end">₹${formatCurrency(entry.sgstAmount)}</td>
+            <td class="text-end">₹${formatCurrency(entry.purchaseGstAmount || 0)}</td>
+            <td class="text-end ${(entry.netGstAmount || 0) >= 0 ? 'text-success' : 'text-danger'}">
+              ₹${formatCurrency(entry.netGstAmount || 0)}
+            </td>
+            <td class="text-end">${entry.items}</td>
+          </tr>
+        `;
+      });
+      
+      // Add a total row
+      const totalGstItems = gstBreakdownData.reduce((sum, entry) => sum + entry.items, 0);
+      const totalPurchaseGst = gstBreakdownData.reduce((sum, entry) => sum + (entry.purchaseGstAmount || 0), 0);
+      const totalNetGst = gstBreakdownData.reduce((sum, entry) => sum + (entry.netGstAmount || 0), 0);
+      
+      gstByRateHtml += `
+              <tr class="table-primary fw-bold">
+                <td>Total</td>
+                <td class="text-end">₹${totalCGST}</td>
+                <td class="text-end">₹${totalSGST}</td>
+                <td class="text-end">₹${formatCurrency(totalPurchaseGst)}</td>
+                <td class="text-end ${totalNetGst >= 0 ? 'text-success' : 'text-danger'}">
+                  ₹${formatCurrency(totalNetGst)}
+                </td>
+                <td class="text-end">${totalGstItems}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      `;
+      
+      gstByRateCard.innerHTML = gstByRateHtml;
+      summarySection.appendChild(gstByRateCard);
+    }
     
     // Helper to create a single info card
     function createInfoCard(title, content) {

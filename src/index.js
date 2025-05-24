@@ -666,13 +666,96 @@ function processData(purchaseOrderData, salesTaxData) {
   });
   
   // Calculate totals
-  let totalPurchaseAmount = 0;
-  let totalSaleAmount = 0;
+  let totalPurchaseAmount = 0;  // Gross purchase amount
+  let totalSaleAmount = 0;      // Gross sale amount
+  let totalCGSTAmount = 0;
+  let totalSGSTAmount = 0;
+  let totalNetSaleAmount = 0;    // Net sale amount (without tax)
+  let totalNetPurchaseAmount = 0; // Net purchase amount (without tax)
+  let totalNetProfit = 0;       // Net profit (Net Sale - Net Purchase)
+  
+  // Track GST by rate
+  const gstByRate = new Map(); // Map to track GST amounts by rate
   
   salesTaxData.forEach(item => {
-    totalPurchaseAmount += parseNumberValue(item['Total Purchase Amount']);
+    const quantity = parseNumberValue(item['Qty']);
+    const netSaleAmount = parseNumberValue(item['Net Amount']);
+    
+    // Calculate the unit cost without tax (net purchase per unit)
+    const unitGrossPurchaseAmount = parseNumberValue(item['Unit Purchase Amount']);
+    // Assuming the tax rate is the same as in the sales data (IGST for purchase = CGST + SGST for sales)
+    const cgstRate = parseNumberValue(item['CGST Rate']);
+    const sgstRate = parseNumberValue(item['SGST Rate']);
+    const totalTaxRate = cgstRate + sgstRate;
+    
+    // Track GST by rate
+    const cgstAmount = parseNumberValue(item['CGST Tax Amount']);
+    const sgstAmount = parseNumberValue(item['SGST Tax Amount']);
+    const totalGstAmount = cgstAmount + sgstAmount;
+    
+    // Calculate purchase GST
+    const unitNetPurchaseAmount = unitGrossPurchaseAmount / (1 + (totalTaxRate / 100));
+    const netPurchaseAmount = unitNetPurchaseAmount * quantity;
+    const purchaseGstAmount = (unitGrossPurchaseAmount * quantity) - netPurchaseAmount;
+    const purchaseCgstAmount = purchaseGstAmount / 2; // Assuming equal split between CGST and SGST
+    const purchaseSgstAmount = purchaseGstAmount / 2;
+    
+    // Create or update entry in gstByRate map
+    if (totalTaxRate > 0) {
+      const rateKey = `${totalTaxRate.toFixed(2)}%`;
+      if (!gstByRate.has(rateKey)) {
+        gstByRate.set(rateKey, {
+          rate: totalTaxRate,
+          cgstAmount: 0,
+          sgstAmount: 0,
+          totalAmount: 0,
+          purchaseCgstAmount: 0,
+          purchaseSgstAmount: 0,
+          purchaseGstAmount: 0,
+          netGstAmount: 0, // Sale GST - Purchase GST
+          items: 0
+        });
+      }
+      
+      const rateEntry = gstByRate.get(rateKey);
+      rateEntry.cgstAmount += cgstAmount;
+      rateEntry.sgstAmount += sgstAmount;
+      rateEntry.totalAmount += totalGstAmount;
+      rateEntry.purchaseCgstAmount += purchaseCgstAmount;
+      rateEntry.purchaseSgstAmount += purchaseSgstAmount;
+      rateEntry.purchaseGstAmount += purchaseGstAmount;
+      rateEntry.netGstAmount += (totalGstAmount - purchaseGstAmount);
+      rateEntry.items++;
+    }
+    
+    // Calculate total amounts
+    const grossPurchaseAmount = unitGrossPurchaseAmount * quantity;
+    totalPurchaseAmount += grossPurchaseAmount;
     totalSaleAmount += parseNumberValue(item['Total Sale Amount']);
+    totalCGSTAmount += cgstAmount;
+    totalSGSTAmount += sgstAmount;
+    totalNetSaleAmount += netSaleAmount;
+    totalNetPurchaseAmount += netPurchaseAmount;
+    
+    // Calculate net profit as net sale amount - net purchase amount
+    const itemNetProfit = netSaleAmount - netPurchaseAmount;
+    totalNetProfit += itemNetProfit;
   });
+  
+  // Convert gstByRate map to array for easier processing in the UI
+  const gstBreakdownByRate = Array.from(gstByRate.values())
+    .sort((a, b) => b.rate - a.rate) // Sort by rate in descending order
+    .map(entry => ({
+      rate: entry.rate.toFixed(2) + '%',
+      cgstAmount: entry.cgstAmount,
+      sgstAmount: entry.sgstAmount,
+      totalAmount: entry.totalAmount,
+      purchaseCgstAmount: entry.purchaseCgstAmount,
+      purchaseSgstAmount: entry.purchaseSgstAmount,
+      purchaseGstAmount: entry.purchaseGstAmount,
+      netGstAmount: entry.netGstAmount,
+      items: entry.items
+    }));
   
   // Match records between sales tax and purchase orders based on Item Id (prioritizing sales)
   // In this approach, we start from sales data and look for matching purchases
@@ -838,7 +921,15 @@ function processData(purchaseOrderData, salesTaxData) {
     // Financial totals
     totalPurchaseAmount,
     totalSaleAmount,
+    totalNetSaleAmount,
+    totalNetPurchaseAmount,
+    totalCGSTAmount,
+    totalSGSTAmount,
+    totalNetProfit,
     difference: totalSaleAmount - totalPurchaseAmount,
+    
+    // GST breakdown by rate
+    gstBreakdownByRate,
     
     // Garment quantities
     garmentPurchaseQuantity,
@@ -856,6 +947,11 @@ function processData(purchaseOrderData, salesTaxData) {
     // Commission Percentage (Profit/Sale)
     commissionPercentage: totalSaleAmount > 0
       ? ((totalSaleAmount - totalPurchaseAmount) / totalSaleAmount * 100).toFixed(2) + '%'
+      : 'N/A',
+      
+    // Net Profit Percentage
+    netProfitPercentage: totalNetPurchaseAmount > 0
+      ? (totalNetProfit / totalNetPurchaseAmount * 100).toFixed(2) + '%'
       : 'N/A'
   };
   
@@ -868,9 +964,31 @@ Summary:
 -----------------------------------------
 Total Purchase Amount: ${totalPurchaseAmount.toFixed(2)}
 Total Sale Amount: ${totalSaleAmount.toFixed(2)}
-Profit (Sale - Purchase): ${(totalSaleAmount - totalPurchaseAmount).toFixed(2)}
+Gross Profit (Sale - Purchase): ${(totalSaleAmount - totalPurchaseAmount).toFixed(2)}
 Profit Percentage: ${summary.profitPercentage}
 Commission Percentage: ${summary.commissionPercentage}
+
+Net Profit Summary:
+-----------------------------------------
+Total Net Sale Amount (Without Tax): ${totalNetSaleAmount.toFixed(2)}
+Total Net Purchase Amount (Without Tax): ${totalNetPurchaseAmount.toFixed(2)}
+Net Profit (Net Sale - Net Purchase): ${totalNetProfit.toFixed(2)}
+Net Profit Percentage: ${summary.netProfitPercentage}
+
+GST Summary:
+-----------------------------------------
+Total CGST: ${totalCGSTAmount.toFixed(2)}
+Total SGST: ${totalSGSTAmount.toFixed(2)}
+Total GST: ${(totalCGSTAmount + totalSGSTAmount).toFixed(2)}
+
+GST Breakdown by Rate:
+-----------------------------------------
+${gstBreakdownByRate.map(entry => 
+  `Rate ${entry.rate}: 
+   Sale GST: ₹${entry.totalAmount.toFixed(2)} (CGST: ₹${entry.cgstAmount.toFixed(2)}, SGST: ₹${entry.sgstAmount.toFixed(2)})
+   Purchase GST: ₹${entry.purchaseGstAmount.toFixed(2)} (CGST: ₹${entry.purchaseCgstAmount.toFixed(2)}, SGST: ₹${entry.purchaseSgstAmount.toFixed(2)})
+   Net GST: ₹${entry.netGstAmount.toFixed(2)} (${entry.items} items)`
+).join('\n')}
 
 Garment Supplier Summary:
 -----------------------------------------
@@ -902,7 +1020,8 @@ Unused Purchases: ${summary.unusedPurchasesCount}
     garmentSalesDateArray,
     fabricSalesDateArray,
     summary,
-    summaryText
+    summaryText,
+    gstBreakdownByRate
   };
 }
 
